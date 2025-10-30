@@ -6,7 +6,7 @@ from pathlib import Path
 from einops import rearrange
 from decord import VideoReader
 from typing import Callable, Optional
-from .traj_dset import TrajDataset, TrajSlicerDataset
+from .traj_dset import TrajDataset, TrajSlicerDataset, TrajSubset
 from typing import Optional, Callable, Any
 decord.bridge.set_bridge("torch")
 
@@ -23,7 +23,7 @@ class PushTDataset(TrajDataset):
         self,
         n_rollout: Optional[int] = None,
         transform: Optional[Callable] = None,
-        data_path: str = "data/pusht_dataset",
+        data_path: str = "data/pusht_noise",
         normalize_action: bool = True,
         relative=True,
         action_scale=100.0,
@@ -115,11 +115,11 @@ class PushTDataset(TrajDataset):
 
         image = reader.get_batch(frames)  # THWC
         image = image / 255.0
-        image = rearrange(image, "T H W C -> T C H W")
+        original_visual = rearrange(image, "T H W C -> T C H W")
         if self.transform:
-            image = self.transform(image)
+            image = self.transform(original_visual)
         obs = {"visual": image, "proprio": proprio}
-        return obs, act, state, {'shape': shape}
+        return original_visual, obs, act, state, {'shape': shape}
 
     def __getitem__(self, idx):
         return self.get_frames(idx, range(self.get_seq_length(idx)))
@@ -137,21 +137,39 @@ class PushTDataset(TrajDataset):
 def load_pusht_slice_train_val(
     transform,
     n_rollout=50,
-    data_path="data/pusht_dataset",
+    data_path="data/pusht_noise",
     normalize_action=True,
     split_ratio=0.8,
+    pretrain_ratio=0.5,
     num_hist=0,
     num_pred=0,
+    N=20,
+    val_rollout_steps=100,
     frameskip=0,
     with_velocity=True,
 ):
-    train_dset = PushTDataset(
+    full_train_dset = PushTDataset(
         n_rollout=n_rollout,
         transform=transform,
         data_path=data_path + "/train",
         normalize_action=normalize_action,
         with_velocity=with_velocity,
     )
+
+    # Randomly shuffle and split train_dset into pretrain_dset and train_dset
+    indices = torch.randperm(len(full_train_dset))
+    split_idx = int(len(full_train_dset) * pretrain_ratio)  # 50-50 split
+
+    if pretrain_ratio == 0:
+        pretrain_indices = indices
+        train_indices = indices
+    else:
+        pretrain_indices = indices[:split_idx]
+        train_indices = indices[split_idx:]
+
+    pretrain_dset = TrajSubset(full_train_dset, pretrain_indices)
+    train_dset = TrajSubset(full_train_dset, train_indices)
+
     val_dset = PushTDataset(
         n_rollout=n_rollout,
         transform=transform,
@@ -161,13 +179,16 @@ def load_pusht_slice_train_val(
     )
 
     num_frames = num_hist + num_pred
-    train_slices = TrajSlicerDataset(train_dset, num_frames, frameskip)
-    val_slices = TrajSlicerDataset(val_dset, num_frames, frameskip)
+    pretrain_slices = TrajSlicerDataset(pretrain_dset, num_frames, N, frameskip)
+    train_slices = TrajSlicerDataset(train_dset, num_frames, N, frameskip)
+    val_slices = TrajSlicerDataset(val_dset, num_frames, val_rollout_steps, frameskip)
 
     datasets = {}
     datasets["train"] = train_slices
     datasets["valid"] = val_slices
+    datasets["pretrain"] = pretrain_slices
     traj_dset = {}
     traj_dset["train"] = train_dset
     traj_dset["valid"] = val_dset
+    traj_dset["pretrain"] = pretrain_dset
     return datasets, traj_dset

@@ -14,7 +14,7 @@ from itertools import product
 from pathlib import Path
 from einops import rearrange
 from omegaconf import OmegaConf, open_dict
-
+from hydra.utils import to_absolute_path
 from env.venv import SubprocVectorEnv
 from custom_resolvers import replace_slash
 from preprocessor import Preprocessor
@@ -30,46 +30,16 @@ ALL_MODEL_KEYS = [
     "decoder",
     "proprio_encoder",
     "action_encoder",
+    "initnet",
 ]
 
 def planning_main_in_dir(working_dir, cfg_dict):
     os.chdir(working_dir)
     return planning_main(cfg_dict=cfg_dict)
 
-def launch_plan_jobs(
-    epoch,
-    cfg_dicts,
-    plan_output_dir,
-):
-    with submitit.helpers.clean_env():
-        jobs = []
-        for cfg_dict in cfg_dicts:
-            subdir_name = f"{cfg_dict['planner']['name']}_goal_source={cfg_dict['goal_source']}_goal_H={cfg_dict['goal_H']}_alpha={cfg_dict['objective']['alpha']}"
-            subdir_path = os.path.join(plan_output_dir, subdir_name)
-            executor = submitit.AutoExecutor(
-                folder=subdir_path, slurm_max_num_timeout=20
-            )
-            executor.update_parameters(
-                **{
-                    k: v
-                    for k, v in cfg_dict["hydra"]["launcher"].items()
-                    if k != "submitit_folder"
-                }
-            )
-            cfg_dict["saved_folder"] = subdir_path
-            cfg_dict["wandb_logging"] = False  # don't init wandb
-            job = executor.submit(planning_main_in_dir, subdir_path, cfg_dict)
-            jobs.append((epoch, subdir_name, job))
-            print(
-                f"Submitted evaluation job for checkpoint: {subdir_path}, job id: {job.job_id}"
-            )
-        return jobs
-
-
 def build_plan_cfg_dicts(
     plan_cfg_path="",
     ckpt_base_path="",
-    model_name="",
     model_epoch="final",
     planner=["gd", "cem"],
     goal_source=["dset"],
@@ -86,7 +56,6 @@ def build_plan_cfg_dicts(
             "goal_source": g_source,
             "goal_H": g_H,
             "ckpt_base_path": ckpt_base_path,
-            "model_name": model_name,
             "model_epoch": model_epoch,
             "objective": {"alpha": a},
         }
@@ -191,7 +160,7 @@ class PlanWorkspace:
         from planning.mpc import MPCPlanner
         if isinstance(self.planner, MPCPlanner):
             self.planner.sub_planner.horizon = cfg_dict["goal_H"]
-            self.planner.n_taken_actions = cfg_dict["goal_H"]
+            self.planner.n_taken_actions = cfg_dict["planner"]["n_taken_actions"]
         else:
             self.planner.horizon = cfg_dict["goal_H"]
 
@@ -268,9 +237,9 @@ class PlanWorkspace:
 
         # Check if any trajectory is long enough
         valid_traj = [
-            self.dset[i][0]["visual"].shape[0]
+            self.dset[i][1]["visual"].shape[0]
             for i in range(len(self.dset))
-            if self.dset[i][0]["visual"].shape[0] >= traj_len
+            if self.dset[i][1]["visual"].shape[0] >= traj_len
         ]
         if len(valid_traj) == 0:
             raise ValueError("No trajectory in the dataset is long enough.")
@@ -280,7 +249,7 @@ class PlanWorkspace:
             max_offset = -1
             while max_offset < 0:  # filter out traj that are not long enough
                 traj_id = random.randint(0, len(self.dset) - 1)
-                obs, act, state, e_info = self.dset[traj_id]
+                _, obs, act, state, e_info = self.dset[traj_id]
                 max_offset = obs["visual"].shape[0] - traj_len
             state = state.numpy()
             offset = random.randint(0, max_offset)
@@ -327,14 +296,17 @@ class PlanWorkspace:
             actions_init = self.gt_actions
         else:
             actions_init = None
+
+        # import IPython; IPython.embed()
         actions, action_len = self.planner.plan(
             obs_0=self.obs_0,
             obs_g=self.obs_g,
-            actions=actions_init,
+            actions=actions_init
         )
-        logs, successes, _, _ = self.evaluator.eval_actions(
+        logs, successes, e_obses, e_states = self.evaluator.eval_actions(
             actions.detach(), action_len, save_video=True, filename="output_final"
         )
+        #import IPython; IPython.embed()
         logs = {f"final_eval/{k}": v for k, v in logs.items()}
         self.wandb_run.log(logs)
         logs_entry = {
@@ -350,9 +322,9 @@ class PlanWorkspace:
         return logs
 
 
-def load_ckpt(snapshot_path, device):
+def load_ckpt(snapshot_path, device, to_load=['all']):
     with snapshot_path.open("rb") as f:
-        payload = torch.load(f, map_location=device)
+        payload = torch.load(f, map_location=device, weights_only=False)
     loaded_keys = []
     result = {}
     for k, v in payload.items():
@@ -363,11 +335,16 @@ def load_ckpt(snapshot_path, device):
     return result
 
 
-def load_model(model_ckpt, train_cfg, num_action_repeat, device):
+def load_model(model_ckpt, initnet_ckpt, train_cfg, num_action_repeat, device):
     result = {}
     if model_ckpt.exists():
         result = load_ckpt(model_ckpt, device)
         print(f"Resuming from epoch {result['epoch']}: {model_ckpt}")
+
+    initnet = None
+    if initnet_ckpt is not None and initnet_ckpt.exists():
+        initnet = load_ckpt(initnet_ckpt, device, to_load=['initnet'])
+        initnet = initnet["initnet"]
 
     if "encoder" not in result:
         result["encoder"] = hydra.utils.instantiate(
@@ -400,6 +377,7 @@ def load_model(model_ckpt, train_cfg, num_action_repeat, device):
         action_encoder=result["action_encoder"],
         predictor=result["predictor"],
         decoder=result["decoder"],
+        initnet=initnet,
         proprio_dim=train_cfg.proprio_emb_dim,
         action_dim=train_cfg.action_emb_dim,
         concat_dim=train_cfg.concat_dim,
@@ -438,8 +416,8 @@ def planning_main(cfg_dict):
     else:
         wandb_run = None
 
-    ckpt_base_path = cfg_dict["ckpt_base_path"]
-    model_path = f"{ckpt_base_path}/outputs/{cfg_dict['model_name']}/"
+    ckpt_base_path = cfg_dict["ckpt_path"]
+    model_path = Path(to_absolute_path(ckpt_base_path))
     with open(os.path.join(model_path, "hydra.yaml"), "r") as f:
         model_cfg = OmegaConf.load(f)
 
@@ -456,7 +434,9 @@ def planning_main(cfg_dict):
     model_ckpt = (
         Path(model_path) / "checkpoints" / f"model_{cfg_dict['model_epoch']}.pth"
     )
-    model = load_model(model_ckpt, model_cfg, num_action_repeat, device=device)
+
+    initnet_ckpt = Path(cfg_dict["init_ckpt_path"]) if cfg_dict.get("init_ckpt_path") else None
+    model = load_model(model_ckpt, initnet_ckpt, model_cfg, num_action_repeat, device=device)
 
     # use dummy vector env for wall and deformable envs
     if model_cfg.env.name == "wall" or model_cfg.env.name == "deformable_env":
@@ -496,7 +476,7 @@ def planning_main(cfg_dict):
 @hydra.main(config_path="conf", config_name="plan")
 def main(cfg: OmegaConf):
     with open_dict(cfg):
-        cfg["saved_folder"] = os.getcwd()
+        cfg["saved_folder"] = os.getcwd().replace("outputs", "plan_outputs")
         log.info(f"Planning result saved dir: {cfg['saved_folder']}")
     cfg_dict = cfg_to_dict(cfg)
     cfg_dict["wandb_logging"] = True

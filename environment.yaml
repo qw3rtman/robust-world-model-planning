@@ -1,75 +1,78 @@
-name: dino_wm
+name: robust_wm
 channels:
+  - menpo
   - conda-forge
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_gnu
-  - bzip2=1.0.8=hd590300_5
-  - ca-certificates=2024.6.2=hbcca054_0
-  - ffmpeg=4.3.2=h37c90e5_3
-  - freetype=2.12.1=h267a509_2
-  - gmp=6.3.0=h59595ed_1
-  - gnutls=3.6.13=h85f3911_1
-  - imageio=2.34.1=pyh4b66e23_0
-  - lame=3.100=h166bdaf_1003
-  - lcms2=2.16=hb7c19ff_0
-  - ld_impl_linux-64=2.40=hf3520f5_1
-  - lerc=4.0.0=h27087fc_0
-  - libblas=3.9.0=22_linux64_openblas
-  - libcblas=3.9.0=22_linux64_openblas
-  - libdeflate=1.20=hd590300_0
-  - libffi=3.4.2=h7f98852_5
-  - libgcc-ng=13.2.0=h77fa898_7
-  - libgfortran-ng=13.2.0=h69a702a_7
-  - libgfortran5=13.2.0=hca663fb_7
-  - libgomp=13.2.0=h77fa898_7
-  - libiconv=1.17=hd590300_2
-  - libjpeg-turbo=3.0.0=hd590300_1
-  - liblapack=3.9.0=22_linux64_openblas
-  - libnsl=2.0.1=hd590300_0
-  - libopenblas=0.3.27=pthreads_h413a1c8_0
-  - libpng=1.6.43=h2797004_0
-  - libsqlite=3.45.3=h2797004_0
-  - libstdcxx-ng=13.2.0=hc0a3c3a_7
-  - libtiff=4.6.0=h1dd3fc0_3
-  - libuuid=2.38.1=h0b41bf4_0
-  - libwebp-base=1.4.0=hd590300_0
-  - libxcb=1.15=h0b41bf4_0
+  - bzip2=1.0.8=hda65f42_8
+  - ca-certificates=2025.8.3=hbd8a1cb_0
+  - glew
+  - glfw3=3.2.1=0
+  - icu=75.1=he02047a_0
+  - ld_impl_linux-64=2.44=h1423503_1
+  - libdrm=2.4.125=hb03c661_1
+  - libexpat=2.7.1=hecca717_0
+  - libffi=3.4.6=h2dba641_1
+  - libgcc=15.1.0=h767d61c_5
+  - libgcc-ng=15.1.0=h69a702a_5
+  - libglu=9.0.3=h5888daf_1
+  - libglvnd=1.7.0=ha4b6fd6_2
+  - libgomp=15.1.0=h767d61c_5
+  - libiconv=1.18=h3b78370_2
+  - libllvm20=20.1.8=hf7376ad_1
+  - liblzma=5.8.1=hb9d3cd8_2
+  - libnsl=2.0.1=hb9d3cd8_1
+  - libopengl=1.7.0=ha4b6fd6_2
+  - libpciaccess=0.18=hb9d3cd8_0
+  - libsqlite=3.50.4=h0c1763c_0
+  - libstdcxx=15.1.0=h8f9b012_5
+  - libstdcxx-ng=15.1.0=h4852527_5
+  - libuuid=2.41.1=he9a06e4_0
+  - libxcb=1.17.0=h8a09558_0
   - libxcrypt=4.4.36=hd590300_1
-  - libzlib=1.2.13=h4ab18f5_6
-  - ncurses=6.5=h59595ed_0
-  - nettle=3.6=he412f7d_0
-  - numpy=1.26.4=py39h474f0d3_0
-  - openh264=2.1.1=h780b84a_0
-  - openjpeg=2.5.2=h488ebb8_0
-  - openssl=3.3.0=h4ab18f5_3
-  - pillow=10.3.0=py39h90c7501_0
-  - pip=24.0=pyhd8ed1ab_0
-  - pthread-stubs=0.4=h36c2ea0_1001
-  - python=3.9.19=h0755675_0_cpython
-  - python_abi=3.9=4_cp39
-  - readline=8.2=h8228510_1
-  - setuptools=70.0.0=pyhd8ed1ab_0
-  - tk=8.6.13=noxft_h4845f30_101
-  - tzdata=2024a=h0c530f3_0
-  - wheel=0.43.0=pyhd8ed1ab_1
-  - x264=1!161.3030=h7f98852_1
-  - xorg-libxau=1.0.11=hd590300_0
-  - xorg-libxdmcp=1.1.3=h7f98852_0
-  - xz=5.2.6=h166bdaf_0
-  - zlib=1.2.13=h4ab18f5_6
-  - zstd=1.5.6=ha6fb4c9_0
+  - libxml2=2.14.6=h26afc86_1
+  - libxml2-16=2.14.6=ha9997c6_1
+  - libzlib=1.3.1=hb9d3cd8_2
+  - mesalib=25.0.5=h57bcd07_2
+  - ncurses=6.5=h2d0b736_3
+  - openssl=3.5.2=h26f9b46_0
+  - pip=25.2=pyh8b19718_0
+  - pthread-stubs=0.4=hb9d3cd8_1002
+  - python=3.10.18=hd6af730_0_cpython
+  - readline=8.2=h8c095d6_2
+  - setuptools=80.9.0=pyhff2d567_0
+  - spirv-tools=2025.1=h84d6215_0
+  - tk=8.6.13=noxft_hd72426e_102
+  - tzdata=2025b=h78e105d_0
+  - wheel=0.45.1=pyhd8ed1ab_1
+  - xorg-libx11=1.8.12=h4f16b4b_0
+  - xorg-libxau=1.0.12=hb9d3cd8_0
+  - xorg-libxdmcp=1.1.5=hb9d3cd8_0
+  - xorg-libxext=1.3.6=hb9d3cd8_0
+  - xorg-libxrandr=1.5.4=hb9d3cd8_0
+  - xorg-libxrender=0.9.12=hb9d3cd8_0
+  - xorg-libxshmfence=1.3.3=hb9d3cd8_0
+  - zstd=1.5.7=hb8e6e7a_2
+  - pip
   - pip:
       - absl-py==2.1.0
       - accelerate==0.26.1
+      - aiohappyeyeballs==2.6.1
+      - aiohttp==3.13.2
+      - aiosignal==1.4.0
+      - annotated-types==0.7.0
       - antlr4-python3-runtime==4.9.3
+      - anyio==4.11.0
       - array-record==0.5.1
       - asttokens==3.0.0
       - astunparse==1.6.3
+      - async-timeout==5.0.1
       - attrs==23.2.0
       - bddl==1.0.1
       - beautifulsoup4==4.13.3
       - cachetools==5.3.3
+      - cbor2==5.7.1
       - certifi==2024.6.2
       - cffi==1.16.0
       - cfgv==3.4.0
@@ -93,7 +96,6 @@ dependencies:
       - egl-probe==1.0.2
       - einops==0.4.1
       - etils==1.5.2
-      - evdev==1.7.1
       - exceptiongroup==1.2.1
       - executing==2.2.0
       - fasteners==0.19
@@ -102,9 +104,11 @@ dependencies:
       - flatbuffers==24.3.25
       - flax==0.7.5
       - fonttools==4.53.0
+      - frozenlist==1.8.0
       - fsspec==2024.5.0
       - future==0.18.2
       - gast==0.5.4
+      - gdown==5.2.0
       - gitdb==4.0.11
       - gitpython==3.1.43
       - glfw==2.7.0
@@ -112,14 +116,19 @@ dependencies:
       - google-auth-oauthlib==1.2.0
       - google-pasta==0.2.0
       - grpcio==1.64.0
+      - grpclib==0.4.8
       - gym==0.23.1
       - gym-notices==0.0.8
+      - h2==4.3.0
       - h5py==3.11.0
+      - hpack==4.1.0
       - huggingface-hub==0.23.2
       - hydra-core==1.2.0
       - hydra-submitit-launcher==1.2.0
+      - hyperframe==6.1.0
       - identify==2.5.36
       - idna==3.7
+      - imageio==2.37.0
       - imageio-ffmpeg==0.4.9
       - importlib-metadata==7.1.0
       - importlib-resources==6.4.0
@@ -150,16 +159,19 @@ dependencies:
       - mdurl==0.1.2
       - ml-collections==0.1.1
       - ml-dtypes==0.2.0
+      - modal==1.2.1
       - moviepy==1.0.3
       - mpmath==1.3.0
       - msgpack==1.0.8
       - mujoco==3.2.7
       - mujoco-py==2.1.2.14
+      - multidict==6.7.0
       - nbformat==5.10.4
       - nest-asyncio==1.6.0
       - networkx==3.2.1
       - nodeenv==1.9.0
       - numba==0.59.1
+      - numpy==1.26.4
       - nvidia-cublas-cu12==12.1.3.1
       - nvidia-cuda-cupti-cu12==12.1.105
       - nvidia-cuda-nvrtc-cu12==12.1.105
@@ -183,8 +195,10 @@ dependencies:
       - orbax-checkpoint==0.4.4
       - packaging==24.0
       - parso==0.8.4
+      - patchelf==0.17.2.4
       - pathtools==0.1.2
       - pexpect==4.9.0
+      - pillow==11.3.0
       - platformdirs==4.2.2
       - plotly==5.22.0
       - pluggy==1.5.0
@@ -192,6 +206,7 @@ dependencies:
       - proglog==0.1.10
       - promise==2.3
       - prompt-toolkit==3.0.50
+      - propcache==0.4.1
       - protobuf==3.20.3
       - psutil==5.9.8
       - ptyprocess==0.7.0
@@ -203,12 +218,15 @@ dependencies:
       - pybullet==3.2.7
       - pycocotools==2.0.7
       - pycparser==2.22
+      - pydantic==2.11.9
+      - pydantic-core==2.33.2
       - pygame==2.5.2
       - pygments==2.18.0
       - pymunk==6.8.0
       - pynput==1.7.7
       - pyopengl==3.1.7
       - pyparsing==3.1.2
+      - pysocks==1.7.1
       - pytest==8.2.1
       - python-dateutil==2.9.0.post0
       - python-xlib==0.33
@@ -230,13 +248,17 @@ dependencies:
       - sentry-sdk==2.3.1
       - setproctitle==1.3.3
       - shapely==2.0.3
+      - shellingham==1.5.4
       - shortuuid==1.0.13
+      - sigtools==4.0.1
       - six==1.16.0
       - smmap==5.0.1
+      - sniffio==1.3.1
       - soupsieve==2.6
       - stack-data==0.6.3
       - submitit==1.5.1
       - sympy==1.12.1
+      - synchronicity==0.10.2
       - tenacity==8.3.0
       - tensorboard==2.15.2
       - tensorboard-data-server==0.7.2
@@ -269,11 +291,18 @@ dependencies:
       - trimesh==4.4.0
       - triton==2.3.0
       - typeguard==2.13.3
-      - typing-extensions==4.12.1
+      - typer==0.20.0
+      - types-certifi==2021.10.8.3
+      - types-toml==0.10.8.20240310
+      - typing-extensions==4.15.0
+      - typing-inspection==0.4.1
+      - udocker==1.3.17
       - urllib3==2.2.1
       - virtualenv==20.26.2
-      - wandb==0.13.1
+      - wandb==0.21.4
+      - watchfiles==1.1.1
       - wcwidth==0.2.13
       - werkzeug==3.0.3
       - wrapt==1.14.1
+      - yarl==1.22.0
       - zipp==3.19.1

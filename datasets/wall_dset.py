@@ -87,11 +87,11 @@ class WallDataset(TrajDataset):
         door_location = self.door_locations[idx, frames]
         wall_location = self.wall_locations[idx, frames]
 
-        image = image[frames] / 255 
+        original_visual = image[frames] / 255 
         if self.transform:
-            image = self.transform(image)
+            image = self.transform(original_visual)
         obs = {"visual": image,"proprio": proprio}
-        return obs, act, state, {'fix_door_location': door_location[0], 'fix_wall_location': wall_location[0]}
+        return original_visual, obs, act, state, {'fix_door_location': door_location[0], 'fix_wall_location': wall_location[0]}
 
     def __getitem__(self, idx):
         return self.get_frames(idx, range(self.get_seq_length(idx)))
@@ -115,6 +115,8 @@ def load_wall_slice_train_val(
     num_hist=0,
     num_pred=0,
     frameskip=0,
+    pretrain_ratio=0,
+    N=10
 ):  
     if split_mode == "random":
         dset = WallDataset(
@@ -127,6 +129,7 @@ def load_wall_slice_train_val(
             traj_dataset=dset, 
             train_fraction=split_ratio, 
             num_frames=num_hist + num_pred, 
+            N=N,
             frameskip=frameskip
         )
     elif split_mode == "folder":

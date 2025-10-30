@@ -9,6 +9,7 @@ dataset:
   data_path: ${oc.env:DATASET_DIR}/wall_single
   split_ratio: 0.9
   split_mode: "random"
+  pretrain_ratio: 0
   transform:
     _target_: "datasets.img_transforms.default_transform"
     img_size: ${img_size}

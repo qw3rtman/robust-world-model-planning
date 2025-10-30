@@ -1,29 +1,12 @@
 defaults:
   - _self_
-  - override hydra/launcher: submitit_slurm
 
 hydra:
   run:
-    dir: plan_outputs/${now:%Y%m%d%H%M%S}_${replace_slash:${model_name}}_gH${goal_H}
-  sweep:
-    dir: plan_outputs/${now:%Y%m%d%H%M%S}_${replace_slash:${model_name}}_gH${goal_H}
-    subdir: ${hydra.job.num}
-  launcher:
-    submitit_folder: ${hydra.sweep.dir}/.submitit/%j
-    nodes: 1
-    tasks_per_node: 1
-    cpus_per_task: 16
-    mem_gb: 256
-    gres: "gpu:h100:1"
-    qos: "explore"
-    timeout_min: 720
-    setup: ["export DEBUGVAR=$(scontrol show hostnames $SLURM_JOB_NODELIST)",
-            export MASTER_ADDR="$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)",
-            "export MASTER_PORT=$(for port in $(shuf -i 30000-65500 -n 20); do if [[ $(netstat -tupln 2>&1 | grep $port | wc -l) -eq 0 ]] ; then echo $port; break; fi; done;)",]
+    dir: plan_outputs/pusht/${now:%Y%m%d%H%M%S}
 
 # model to load for planning
-ckpt_base_path: ./checkpoints  # put absolute path here. Checkpoints will be loaded from ${ckpt_base_path}/outputs
-model_name: null
+ckpt_path: ./outputs/pusht/
 model_epoch: latest
 
 seed: 99
@@ -37,20 +20,35 @@ debug_dset_init: False
 objective:
   _target_: planning.objectives.create_objective_fn
   alpha: 1
-  base: 2
-  mode: last
+  base: 0.5
+  mode: all
 
+#closed-loop
 planner:
   _target_: planning.mpc.MPCPlanner
-  max_iter: null 
-  n_taken_actions: 5
+  max_iter: null
+  n_taken_actions: 1
   sub_planner:
-    target: planning.cem.CEMPlanner
+    action_noise: 0.003
+    eval_every: 80
     horizon: 5
-    topk: 30
-    num_samples: 300
-    var_scale: 1
-    opt_steps: 30
-    eval_every: 1
-  name: mpc_cem
+    lr: 0.2
+    opt_steps: 100
+    optimizer_type: adam
+    rollout_type: custom
+    sample_type: randn  # 'zero', 'randn', 'initnet'
+    target: planning.gd.GDPlanner
+  name: mpc_gd
 
+# open-loop
+# planner:
+#   _target_: planning.gd.GDPlanner
+#   horizon: 5
+#   action_noise: 0.003
+#   sample_type: 'randn' # 'zero', 'randn', 'initnet'
+#   lr: 3e-1
+#   opt_steps: 300
+#   eval_every: 10
+#   optimizer_type: "adam"
+#   rollout_type: "custom"
+#   name: gd

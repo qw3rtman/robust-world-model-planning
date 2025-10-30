@@ -14,7 +14,7 @@ def create_objective_fn(alpha, base, mode="last"):
     """
     metric = nn.MSELoss(reduction="none")
 
-    def objective_fn_last(z_obs_pred, z_obs_tgt):
+    def objective_fn_last(z_obs_pred, z_obs_tgt, step=None):
         """
         Args:
             z_obs_pred: dict, {'visual': (B, T, *D_visual), 'proprio': (B, T, *D_proprio)}
@@ -31,7 +31,7 @@ def create_objective_fn(alpha, base, mode="last"):
         loss = loss_visual + alpha * loss_proprio
         return loss
 
-    def objective_fn_all(z_obs_pred, z_obs_tgt):
+    def objective_fn_all(z_obs_pred, z_obs_tgt, step):
         """
         Loss calculated on all pred frames.
         Args:

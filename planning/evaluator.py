@@ -102,7 +102,7 @@ class PlanEvaluator:  # evaluator for planning
             self.preprocessor.transform_obs(self.obs_g), self.device
         )
         with torch.no_grad():
-            i_z_obses, _ = self.wm.rollout(
+            i_z_obses, _ = self.wm.rollout_legacy(
                 obs_0=trans_obs_0,
                 act=actions,
             )

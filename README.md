@@ -1,39 +1,50 @@
-# **DINO-WM**: World Models on Pre-trained Visual Features enable Zero-shot Planning
-[[Paper]](https://arxiv.org/abs/2411.04983) [[Code]]() [[Data]](https://osf.io/bmw48/?view_only=a56a296ce3b24cceaf408383a175ce28) [[Project Website]](https://dino-wm.github.io/) 
+## Closing the Train-Test Gap in World Models for Gradient-Based Planning
+> Arjun Parthasarathy\*, Nimit Kalra\*, Rohun Agrawal\*,  
+> Yann LeCun, Oumayma Bounou, Pavel Izmailov, Micah Goldblum
 
-[Gaoyue Zhou](https://gaoyuezhou.github.io/), [Hengkai Pan](https://hengkaipan.github.io/), [Yann LeCun](https://yann.lecun.com/) and [Lerrel Pinto](https://www.lerrelpinto.com/), New York University, Meta AI
+<div align="center">
 
-![teaser_figure](assets/intro.png)
+<img alt="Our Method" width="75%" src="https://github.com/user-attachments/assets/abd293be-cb05-4210-b559-a3f5682d7cd8"/>
 
-# Getting Started
+<p align="center">
+  <a href="https://arxiv.org/abs/2512.09929" target="_blank">📄 Paper</a> •
+  <a href="#checkpoints">🤖 Models</a> •
+  <a href="#datasets">🗂️ Data</a>
+</p>
+</div>
 
-1. [Installation](#installation)
-2. [Datasets](#datasets)
-3. [Train a DINO-WM](#train-a-dino-wm)
-4. [Plan with a DINO-WM](#plan-with-a-dino-wm)
+### Checkpoints
+Pretrained world model checkpoints are provided by [DINO-WM](https://github.com/gaoyuezhou/dino_wm) and can be downloaded [here](https://osf.io/bmw48/?view_only=a56a296ce3b24cceaf408383a175ce28) under `checkpoints`.
 
-## Installation
+<div align="center">
+<img alt="Our Method" width="75%" src="https://github.com/user-attachments/assets/2ad42535-1e5b-474a-9217-efba54f24b18"/>
+</div>
 
-Setup an environment
+**Online/Adversarial World Modeling Checkpoints.** Below, we provide checkpoints obtained after applying our methods to the pretrained DINO-WM checkpoints. These correspond to the results in Table 1. We recommend using [`gdown`](https://github.com/wkentaro/gdown) to download these to your machine.
+|         Method    |                                                        PushT                                                       |                                                        PointMaze                                                       |                                                        Wall                                                       |
+|-------------:|:------------------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------:|
+|      Online | [`pusht.online.6000`](https://drive.google.com/file/d/14rn3dD4ezLC4Qh5Xfwrlwe7_Wlxohecu/view?usp=sharing)      | [`pointmaze.online.100`](https://drive.google.com/file/d/1bpX5TaW4DhgfKDj7iwQ5r2fk4teVCUiW/view?usp=sharing)       | [`wall.online.full`](https://drive.google.com/file/d/12BXoo7WYJbhy976Ee_e43NiQfHBk82tT/view?usp=sharing)      |
+| Adversarial | [`pusht.adversarial.full`](https://drive.google.com/file/d/1le0G8zJYRJTz-2lyOFtn6QhCqE6cuZwo/view?usp=sharing) | [`pointmaze.adversarial.full`](https://drive.google.com/file/d/1jB24wVsw7dRy9PwpV0DhzcWQNmXMLtsl/view?usp=sharing) | [`wall.adversarial.full`](https://drive.google.com/file/d/1fWdI-dA1HOsPGg-CdQZPrXkSw8LoDELO/view?usp=sharing) |
+
+### Installation
+
+Our code is adapted from [DINO-WM](https://github.com/gaoyuezhou/dino_wm). Please refer to their repo to any additional installation and setup instructions. See [here](https://gist.github.com/qw3rtman/e50d5414aa5c6435dad87eec7b7a7c6f) for Modal specific instructions.
+
+First clone the repo and create a Python environment for dependencies.
 ```bash
-git clone https://github.com/gaoyuezhou/dino_wm.git
-cd dino_wm
+git clone https://github.com/qw3rtman/robust-world-model-planning.git
+cd robust-world-model-planning
 conda env create -f environment.yaml
-conda activate dino_wm
+conda activate robust_wm
 ```
 
-### Install Mujoco
-                    
-Create the `.mujoco` directory and download Mujoco210 using `wget`:
-
+Then, install Mujoco.
 ```bash
 mkdir -p ~/.mujoco
 wget https://mujoco.org/download/mujoco210-linux-x86_64.tar.gz -P ~/.mujoco/
 cd ~/.mujoco
 tar -xzvf mujoco210-linux-x86_64.tar.gz
 ```
-
-Append the following lines to your `~/.bashrc`:
 
 ```bash
 # Mujoco Path. Replace `<username>` with your actual username if necessary.
@@ -43,134 +54,71 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/<username>/.mujoco/mujoco210/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/nvidia
 ```
 
-Reload your shell configuration to apply the environment variable changes:
-
-```bash
-source ~/.bashrc
-```
-
-#### Notes
+Notes:
 - For GPU-accelerated simulations, ensure the NVIDIA drivers are correctly installed.
 - If you encounter issues, confirm that the paths in your `LD_LIBRARY_PATH` are correct.
 - If problems persist, refer to these GitHub issue pages for potential solutions: [openai/mujoco-py#773](https://github.com/openai/mujoco-py/issues/773), [ethz-asl/reinmav-gym#35](https://github.com/ethz-asl/reinmav-gym/issues/35).
 
 
-The following are optional installation steps for planning in the deformable environments.
-
-### Install PyFlex (optional for deformable environments)
-
-Install PyFleX if you need to plan within the deformable environments. These installation instructions are adapted from [AdaptiGraph](https://github.com/Boey-li/AdaptiGraph/tree/main).
-
-We are using a docker image to compile PyFleX. Make sure you have the following packages:
-- [docker-ce](https://docs.docker.com/engine/install/ubuntu/)
-- [nvidia-docker](https://github.com/NVIDIA/nvidia-docker#quickstart)
-
-Full installation:
-```bash
-pip install "pybind11[global]"
-sudo docker pull xingyu/softgym
-```
-Run `bash install_pyflex.sh`. You may need to `source ~/.bashrc` to `import PyFleX`.
-
-Or you can manually run
-```bash
-# compile pyflex in docker image
-# re-compile if source code changed
-# make sure ${PWD}/PyFleX is the pyflex root path when re-compiling
-sudo docker run \
-    -v ${PWD}/PyFleX:/workspace/PyFleX \
-    -v ${CONDA_PREFIX}:/workspace/anaconda \
-    -v /tmp/.X11-unix:/tmp/.X11-unix \
-    --gpus all \
-    -e DISPLAY=$DISPLAY \
-    -e QT_X11_NO_MITSHM=1 \
-    -it xingyu/softgym:latest bash \
-    -c "export PATH=/workspace/anaconda/bin:$PATH; cd /workspace/PyFleX; export PYFLEXROOT=/workspace/PyFleX; export PYTHONPATH=/workspace/PyFleX/bindings/build:$PYTHONPATH; export LD_LIBRARY_PATH=$PYFLEXROOT/external/SDL2-2.0.4/lib/x64:$LD_LIBRARY_PATH; cd bindings; mkdir build; cd build; /usr/bin/cmake ..; make -j"
-
-# import to system paths. run these if you do not have these paths yet in ~/.bashrc
-echo '# PyFleX' >> ~/.bashrc
-echo "export PYFLEXROOT=${PWD}/PyFleX" >> ~/.bashrc
-echo 'export PYTHONPATH=${PYFLEXROOT}/bindings/build:$PYTHONPATH' >> ~/.bashrc
-echo 'export LD_LIBRARY_PATH=${PYFLEXROOT}/external/SDL2-2.0.4/lib/x64:$LD_LIBRARY_PATH' >> ~/.bashrc
-echo '' >> ~/.bashrc
-```
-
-# Datasets
-
-Dataset for each task can be downloaded [here](https://osf.io/bmw48/?view_only=a56a296ce3b24cceaf408383a175ce28). 
-
-Once the datasets are downloaded, unzip them. For the deformable dataset, you need to combine all parts and then unzip:
-```
-zip -s- deformable.zip -O deformable_full.zip
-unzip deformable_full.zip
-```
+### Datasets
+We use training data collected by Zhou et al. in DINO-WM [here](https://osf.io/bmw48/?view_only=a56a296ce3b24cceaf408383a175ce28). Once the datasets are downloaded, unzip them.
 
 Set an environment variable pointing to your dataset folder:
 ```bash
 # Replace /path/to/data with the actual path to your dataset folder.
 export DATASET_DIR=/path/to/data
 ```
-Inside the dataset folder, you should find the following structure:
+Setup the dataset folder with the following structure:
 ```
 data
-├── deformable
-│   ├── granular
-│   └── rope
 ├── point_maze
 ├── pusht_noise
 └── wall_single
 ```
 
+### Training Robust World Models
+To finetune a base world model with either Online World Modeling or Adversarial World Modeling, run `train.py` with the appropriate overrides for the environment and method:
 
-# Train a DINO-WM
-Once you have completed the above steps, you can check whether you could launch training with an example command like this:
-
-```
-python train.py --config-name train.yaml env=point_maze frameskip=5 num_hist=3
-```
-You may specify models' output directory at `ckpt_base_path` in `conf/train.yaml`.
-
-# Plan with a DINO-WM
-Once a world model has been trained, you may use it for planning with an example command like this:
-
-```
-python plan.py model_name=<model_name> n_evals=5 planner=cem goal_H=5 goal_source='random_state' planner.opt_steps=30
-```
-
-where the model is saved at folder `<ckpt_base_path>/outputs/<model_name>`, and `<ckpt_base_path>` can be specified in `conf/plan.yaml`.
-
-<!-- ## Acknowledgement
-TODO -->
-
-# Pre-trained Model Checkpoints
-
-We have uploaded our trained world model checkpoints for PointMaze, PushT, and Wall [here](https://osf.io/bmw48/?view_only=a56a296ce3b24cceaf408383a175ce28) under `checkpoints`. You can launch planning jobs with their respective configs in the repo:
-
-First, update `ckpt_base_path` to where the checkpoints are saved in the plan configs.
-
-Then launch planning runs with the following commands:
 ```bash
-# PointMaze
-python plan.py --config-name plan_point_maze.yaml model_name=point_maze
 # PushT
-python plan.py --config-name plan_pusht.yaml model_name=pusht
+python train.py --config-name train.yaml env=pusht ckpt_path=./outputs/pusht/ method=online
+python train.py --config-name train.yaml env=pusht ckpt_path=./outputs/pusht/ method=adversarial
+
+# PointMaze
+python train.py --config-name train.yaml env=point_maze ckpt_path=./outputs/point_maze/ method=online
+python train.py --config-name train.yaml env=point_maze ckpt_path=./outputs/point_maze/ method=adversarial
+
 # Wall
-python plan.py --config-name plan_wall.yaml model_name=wall
+python train.py --config-name train.yaml env=wall ckpt_path=./outputs/wall_single/ num_hist=1 method=online
+python train.py --config-name train.yaml env=wall ckpt_path=./outputs/wall_single/ num_hist=1 method=adversarial
 ```
+Note that the base checkpoint used will be `<ckpt_path>/checkpoints/model_latest.pth`.
+During finetuning, checkpoints will be saved to `<ckpt_path>/<method>/<date>/<time>/checkpoints`.
 
-Planning logs and visualizations can be found in `./plan_outputs`.
+### Planning with Robust World Models
+To plan with a finetuned world model, run `plan.py` with the appropriate config file for the environment. Set `ckpt_path` to the path that points to the parent directory of the `checkpoints` directory containing the checkpoint you want to use. 
 
+```bash
+# PushT
+python plan.py --config-name plan_pusht.yaml ckpt_path=./outputs/pusht/<method>/<date>/<time>/
+
+# PointMaze
+python plan.py --config-name plan_point_maze.yaml ckpt_path=./outputs/point_maze/<method>/<date>/<time>/
+
+# Wall
+python plan.py --config-name plan_wall.yaml ckpt_path=./outputs/wall_single/<method>/<date>/<time>/
+```
+Planning results and visualizations will be saved to `plan_outputs/<env>/<current_time>`.
+
+For using our paper's checkpoints, replace ckpt_path with `ckpt_path=./outputs/<env>/<method>`.
 
 ## Citation
-
 ```
-@misc{zhou2024dinowmworldmodelspretrained,
-      title={DINO-WM: World Models on Pre-trained Visual Features enable Zero-shot Planning}, 
-      author={Gaoyue Zhou and Hengkai Pan and Yann LeCun and Lerrel Pinto},
-      year={2024},
-      eprint={2411.04983},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2411.04983}, 
+@article{parthasarathy2025closing,
+    title   = {Closing the Train–Test Gap in World Models for Gradient-Based Planning},
+    author  = {Arjun Parthasarathy, Nimit Kalra, Rohun Agrawal, Yann LeCun, Oumayma Bounou, Pavel Izmailov, Micah Goldblum},
+    journal = {arXiv preprint arXiv:2512.09929},
+    url     = {https://arxiv.org/abs/2512.09929},
+    year    = {2025}
 }
 ```

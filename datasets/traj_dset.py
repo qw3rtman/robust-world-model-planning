@@ -55,21 +55,29 @@ class TrajSlicerDataset(TrajDataset):
         self,
         dataset: TrajDataset,
         num_frames: int,
+        N: int,
         frameskip: int = 1,
         process_actions: str = "concat",
     ):
         self.dataset = dataset
         self.num_frames = num_frames
+        self.N = N
         self.frameskip = frameskip
         self.slices = []
+        self.traj_len = N + num_frames - 1
+        # Load N + num_frames - 1 because all N timesteps need
+        # num_frames - 1 previous states
+        # We need N timesteps so that we can rollout N actions
         for i in range(len(self.dataset)): 
             T = self.dataset.get_seq_length(i)
+            if T < N:
+                continue
             if T - num_frames < 0:
                 print(f"Ignored short sequence #{i}: len={T}, num_frames={num_frames}")
             else:
                 self.slices += [
-                    (i, start, start + num_frames * self.frameskip)
-                    for start in range(T - num_frames * frameskip + 1)
+                    (i, start, start + self.traj_len * self.frameskip, T)
+                    for start in range(T - (self.traj_len * self.frameskip) + 1)
                 ]  # slice indices follow convention [start, end)
         # randomly permute the slices
         self.slices = np.random.permutation(self.slices)
@@ -90,14 +98,32 @@ class TrajSlicerDataset(TrajDataset):
         return len(self.slices)
 
     def __getitem__(self, idx):
-        i, start, end = self.slices[idx]
-        obs, act, state, _ = self.dataset[i]
+        i, start, end, T = self.slices[idx]
+
+        _item = self.dataset[i]
+        original_visual = None
+        obs, act, state, _ = _item[-4:]
+        if len(_item) == 5:
+            original_visual = _item[0]
+
+        goal = {"visual": obs["visual"][T-1], "proprio": obs["proprio"][T-1]}
+        if original_visual is not None:
+            original_visual = original_visual[start:end:self.frameskip].unfold(0, self.num_frames, 1)
+            original_visual = original_visual.permute(0, 4, 1, 2, 3) # (N, num_frames, 3, img_size, img_size)
+
         for k, v in obs.items():
             obs[k] = v[start:end:self.frameskip]
+            obs[k] = obs[k].unfold(0, self.num_frames, 1)
+            if k == "visual":
+                obs[k] = obs[k].permute(0, 4, 1, 2, 3) # (N, num_frames, 3, img_size, img_size)
+            else:
+                obs[k] = obs[k].permute(0, 2, 1) # (N, num_frames, proprio_dim)
         state = state[start:end:self.frameskip]
+        state = state.unfold(0, self.num_frames, 1)
+        state = state.permute(0, 2, 1) # (N, num_frames, state_dim)
         act = act[start:end]
-        act = rearrange(act, "(n f) d -> n (f d)", n=self.num_frames)  # concat actions
-        return tuple([obs, act, state])
+        act = rearrange(act, "(n f) d -> n (f d)", n=self.traj_len)
+        return tuple([original_visual, obs, act, state, goal, T])
 
 
 def random_split_traj(
@@ -140,6 +166,7 @@ def get_train_val_sliced(
     train_fraction: float = 0.9,
     random_seed: int = 42,
     num_frames: int = 10,
+    N: int = 20,
     frameskip: int = 1,
 ):
     train, val = split_traj_datasets(
@@ -147,6 +174,6 @@ def get_train_val_sliced(
         train_fraction=train_fraction,
         random_seed=random_seed,
     )
-    train_slices = TrajSlicerDataset(train, num_frames, frameskip)
-    val_slices = TrajSlicerDataset(val, num_frames, frameskip)
+    train_slices = TrajSlicerDataset(train, num_frames, N, frameskip)
+    val_slices = TrajSlicerDataset(val, num_frames, N, frameskip)
     return train, val, train_slices, val_slices

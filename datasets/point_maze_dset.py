@@ -5,7 +5,7 @@ from pathlib import Path
 from einops import rearrange
 from decord import VideoReader
 from typing import Callable, Optional
-from .traj_dset import TrajDataset, get_train_val_sliced
+from .traj_dset import TrajDataset, TrajSlicerDataset, TrajSubset
 from typing import Optional, Callable, Any
 decord.bridge.set_bridge("torch")
 
@@ -88,14 +88,14 @@ class PointMazeDataset(TrajDataset):
 
         image = image[frames]  # THWC
         image = image / 255.0
-        image = rearrange(image, "T H W C -> T C H W")
+        original_visual = rearrange(image, "T H W C -> T C H W")
         if self.transform:
-            image = self.transform(image)
+            image = self.transform(original_visual)
         obs = {
             "visual": image,
             "proprio": proprio
         }
-        return obs, act, state, {} # env_info
+        return original_visual, obs, act, state, {} # env_info
 
     def __getitem__(self, idx):
         return self.get_frames(idx, range(self.get_seq_length(idx)))
@@ -112,30 +112,37 @@ class PointMazeDataset(TrajDataset):
 def load_point_maze_slice_train_val(
     transform,
     n_rollout=50,
-    data_path='data/pusht_dataset',
+    data_path='data/point_maze',
     normalize_action=False,
     split_ratio=0.8,
+    pretrain_ratio=0.5,
     num_hist=0,
     num_pred=0,
+    N=20,
+    val_rollout_steps=100,
     frameskip=0,
 ):
-    dset = PointMazeDataset(
+    full_train_dset = PointMazeDataset(
         n_rollout=n_rollout,
         transform=transform,
         data_path=data_path,
         normalize_action=normalize_action,
     )
-    dset_train, dset_val, train_slices, val_slices = get_train_val_sliced(
-        traj_dataset=dset, 
-        train_fraction=split_ratio, 
-        num_frames=num_hist + num_pred, 
-        frameskip=frameskip
-    )
+
+    indices = torch.randperm(len(full_train_dset))
+    split_idx = int(len(full_train_dset) * split_ratio)  # 50-50 split
+
+    train_dset = TrajSubset(full_train_dset, indices[:split_idx])
+    val_dset = TrajSubset(full_train_dset, indices[split_idx:])
+
+    num_frames = num_hist + num_pred
+    train_slices = TrajSlicerDataset(train_dset, num_frames, N, frameskip)
+    val_slices = TrajSlicerDataset(val_dset, num_frames, val_rollout_steps, frameskip)
 
     datasets = {}
     datasets['train'] = train_slices
     datasets['valid'] = val_slices
     traj_dset = {}
-    traj_dset['train'] = dset_train
-    traj_dset['valid'] = dset_val
+    traj_dset['train'] = train_dset
+    traj_dset['valid'] = val_dset
     return datasets, traj_dset

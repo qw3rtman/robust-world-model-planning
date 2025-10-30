@@ -1,0 +1,4 @@
+_target_: models.initnet.InitNet
+encoder_dim: 1024
+channel: 128
+n_res_channel: 32

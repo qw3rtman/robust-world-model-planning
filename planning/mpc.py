@@ -88,6 +88,7 @@ class MPCPlanner(BasePlanner):
                 obs_0=cur_obs_0,
                 obs_g=obs_g,
                 actions=memo_actions,
+                step=self.iter
             )  # (b, t, act_dim)
             taken_actions = actions.detach()[:, : self.n_taken_actions]
             self._apply_success_mask(taken_actions)
